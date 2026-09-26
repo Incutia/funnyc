@@ -35,6 +35,11 @@ class ChangePassword(BaseModel):
     new_password: str = Field(min_length=6, max_length=128)
 
 
+class ChangeEmail(BaseModel):
+    password: str
+    email: EmailStr
+
+
 class GoogleStart(BaseModel):
     username: str = Field(min_length=3, max_length=32)
     bio: str = Field(default="", max_length=200)

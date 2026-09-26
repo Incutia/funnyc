@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth import create_token, get_current_user, hash_password, verify_password
 from app.database import get_db
 from app.models import PasswordReset, User
-from app.schemas import ChangePassword, ConfirmEmail, ForgotPassword, ResetPassword, TokenOut, UserCreate, UserLogin
+from app.schemas import ChangeEmail, ChangePassword, ConfirmEmail, ForgotPassword, ResetPassword, TokenOut, UserCreate, UserLogin
 from app.utils import mark_owner, user_out
 from app.storage import user_dir, write_conta
 from app.emailer import send_code
@@ -184,6 +184,36 @@ def change_password(body: ChangePassword, user: User = Depends(get_current_user)
     user.password_hash = hash_password(body.new_password)
     db.commit()
     write_conta(user)
+    return {"ok": True}
+
+
+@router.post("/email")
+def change_email(body: ChangeEmail, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.is_anonymous or not user.password_hash:
+        raise HTTPException(400, "Conta anônima")
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(400, "Senha errada")
+    mail = str(body.email).strip().lower()
+    taken = db.query(User).filter(User.email == mail, User.id != user.id).first()
+    if taken:
+        raise HTTPException(400, "Email já usado")
+    user.email = mail
+    user.email_ok = False
+    db.commit()
+    write_conta(user)
+    return user_out(db, user)
+
+
+@router.delete("/me")
+def delete_me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.is_anonymous:
+        raise HTTPException(400, "Anônimo não apaga")
+    user.banned = True
+    user.email = f"deleted-{user.id}@funnyc.invalid"
+    user.display_name = "apagado"
+    if user.password_hash:
+        user.password_hash = hash_password(f"x{user.id}gone")
+    db.commit()
     return {"ok": True}
 
 
