@@ -6,8 +6,8 @@ import uuid
 from app.auth import get_current_user, get_optional_user, require_member
 from app.config import settings
 from app.database import get_db
-from app.models import Collect, Post, Report, Repost, Smile, User
-from app.utils import parse_tags, post_out
+from app.models import Collect, Notification, Post, Report, Repost, Smile, User
+from app.utils import parse_tags, post_out, public_nick
 from app.storage import log_texto, save_into
 
 router = APIRouter()
@@ -111,6 +111,8 @@ def toggle_smile(
         db.add(Smile(user_id=user.id, post_id=post.id))
         post.smiles_count += 1
         smiled = True
+        if post.user_id != user.id:
+            db.add(Notification(user_id=post.user_id, actor_id=user.id, post_id=post.id, kind="like", text=f"{public_nick(user)} deu like"))
         if post.smiles_count >= settings.FEATURED_SMILE_THRESHOLD:
             post.featured = True
     db.commit()
@@ -161,6 +163,8 @@ def toggle_repost(
         db.add(Repost(user_id=user.id, post_id=post.id))
         post.reposts_count = (post.reposts_count or 0) + 1
         flag = True
+        if post.user_id != user.id:
+            db.add(Notification(user_id=post.user_id, actor_id=user.id, post_id=post.id, kind="rt", text=f"{public_nick(user)} deu RT"))
     db.commit()
     db.refresh(post)
     out = post_out(db, post, user.id)

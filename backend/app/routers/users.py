@@ -271,8 +271,37 @@ def toggle_follow(
     else:
         db.add(Follow(follower_id=me.id, following_id=user.id))
         following = True
+        db.add(Notification(user_id=user.id, actor_id=me.id, kind="follow", text=f"{public_nick(me)} te seguiu"))
     db.commit()
     return {"following": following}
+
+
+@router.get("/{username}/followers")
+def list_followers(username: str, db: Session = Depends(get_db)):
+    user = find_user(db, username)
+    if not user:
+        raise HTTPException(404, "Usuário não encontrado")
+    rows = db.query(Follow).filter(Follow.following_id == user.id).all()
+    out = []
+    for r in rows:
+        u = db.get(User, r.follower_id)
+        if u:
+            out.append(user_out(db, u))
+    return out
+
+
+@router.get("/{username}/following")
+def list_following(username: str, db: Session = Depends(get_db)):
+    user = find_user(db, username)
+    if not user:
+        raise HTTPException(404, "Usuário não encontrado")
+    rows = db.query(Follow).filter(Follow.follower_id == user.id).all()
+    out = []
+    for r in rows:
+        u = db.get(User, r.following_id)
+        if u:
+            out.append(user_out(db, u))
+    return out
 
 
 @router.post("/{username}/ban")

@@ -6,11 +6,26 @@ from sqlalchemy.orm import Session
 from app.auth import create_token, get_current_user, hash_password, verify_password
 from app.database import get_db
 from app.models import PasswordReset, User
-from app.schemas import ForgotPassword, ResetPassword, TokenOut, UserCreate, UserLogin
+from app.schemas import ConfirmEmail, ForgotPassword, ResetPassword, TokenOut, UserCreate, UserLogin
 from app.utils import mark_owner, user_out
 from app.storage import user_dir, write_conta
+from app.emailer import send_code
 
 router = APIRouter()
+
+
+def _issue_code(db, email: str) -> str:
+    code = f"{secrets.randbelow(1000000):06d}"
+    db.query(PasswordReset).filter(PasswordReset.email == email, PasswordReset.used.is_(False)).delete()
+    db.add(
+        PasswordReset(
+            email=email,
+            code_hash=hash_password(code),
+            expires_at=datetime.utcnow() + timedelta(minutes=20),
+        )
+    )
+    db.commit()
+    return code
 
 
 def _token(db, user: User) -> TokenOut:
@@ -44,10 +59,8 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
     db.refresh(user)
     user_dir(user.username)
     write_conta(user)
+    send_code(email, _issue_code(db, email), "confirm")
     return _token(db, user)
-
-
-@router.post("/login", response_model=TokenOut)
 def login(body: UserLogin, db: Session = Depends(get_db)):
     key = body.email.strip().lower()
     user = db.query(User).filter(User.email == key).first()
@@ -89,21 +102,12 @@ def forgot(body: ForgotPassword, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == email).first()
     if not user or user.is_anonymous:
         return {"ok": True, "message": "Se o email existir, o código foi gerado."}
-    code = f"{secrets.randbelow(1000000):06d}"
-    db.query(PasswordReset).filter(PasswordReset.email == email, PasswordReset.used.is_(False)).delete()
-    db.add(
-        PasswordReset(
-            email=email,
-            code_hash=hash_password(code),
-            expires_at=datetime.utcnow() + timedelta(minutes=20),
-        )
-    )
-    db.commit()
-    return {
-        "ok": True,
-        "message": "Código gerado. Sem SMTP no Railway o código vem aqui pra testar.",
-        "code": code,
-    }
+    code = _issue_code(db, email)
+    sent = send_code(email, code, "reset")
+    out = {"ok": True, "email_sent": sent, "message": "Se o email existir, o código foi gerado."}
+    if not sent:
+        out["code"] = code
+    return out
 
 
 @router.post("/reset")
@@ -128,6 +132,39 @@ def reset(body: ResetPassword, db: Session = Depends(get_db)):
     return _token(db, user)
 
 
-@router.get("/me")
+@router.post("/confirm")
+def confirm(body: ConfirmEmail, db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
+    row = (
+        db.query(PasswordReset)
+        .filter(PasswordReset.email == email, PasswordReset.used.is_(False))
+        .order_by(PasswordReset.id.desc())
+        .first()
+    )
+    if not row or row.expires_at < datetime.utcnow():
+        raise HTTPException(400, "Código expirado")
+    if not verify_password(body.code.strip(), row.code_hash):
+        raise HTTPException(400, "Código inválido")
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(404, "Conta não encontrada")
+    user.email_ok = True
+    row.used = True
+    db.commit()
+    return _token(db, user)
+
+
+@router.post("/confirm-again")
+def confirm_again(body: ForgotPassword, db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
+    if not user or user.is_anonymous:
+        return {"ok": True}
+    code = _issue_code(db, email)
+    sent = send_code(email, code, "confirm")
+    out = {"ok": True, "email_sent": sent}
+    if not sent:
+        out["code"] = code
+    return out
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return user_out(db, user)

@@ -30,6 +30,7 @@ def migrate():
         "ALTER TABLE users ADD COLUMN banned BOOLEAN DEFAULT 0",
         "ALTER TABLE messages ADD COLUMN media_url VARCHAR(400) DEFAULT ''",
         "ALTER TABLE comments ADD COLUMN media_url VARCHAR(400) DEFAULT ''",
+        "ALTER TABLE users ADD COLUMN email_ok BOOLEAN DEFAULT 0",
         "ALTER TABLE comments ADD COLUMN parent_id INTEGER",
         "ALTER TABLE comments ADD COLUMN likes_count INTEGER DEFAULT 0",
     ]

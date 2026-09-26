@@ -29,6 +29,7 @@ class User(Base):
     google_id = Column(String(64), unique=True, nullable=True, index=True)
     is_anonymous = Column(Boolean, default=False, index=True)
     banned = Column(Boolean, default=False)
+    email_ok = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     posts = relationship("Post", back_populates="author")
