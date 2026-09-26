@@ -1,0 +1,6 @@
+__pycache__
+*.pyc
+.venv
+funnyc.db
+uploads
+.env
