@@ -163,4 +163,6 @@ class Message(Base):
     receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     text = Column(String(500), default="")
     media_url = Column(String(400), default="")
+    reply_to = Column(Integer, nullable=True)
+    deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)

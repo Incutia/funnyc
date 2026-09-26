@@ -60,6 +60,15 @@ def create_post(
     else:
         raise HTTPException(400, "Envie um arquivo")
     tag_str = ",".join(parse_tags(tags))
+    cap = caption.strip()[:300]
+    if not cap:
+        bits = parse_tags(tags)
+        if bits:
+            cap = " ".join(f"#{t}" for t in bits[:6])
+        elif kind == "video":
+            cap = "vídeo"
+        else:
+            cap = "meme"
     post = Post(
         user_id=user.id,
         kind=kind if kind in ("image", "video") else "image",

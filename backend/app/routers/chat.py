@@ -16,15 +16,25 @@ router = APIRouter()
 
 class ChatIn(BaseModel):
     text: str = Field(default="", max_length=500)
+    reply_id: int | None = None
 
 
 def _out(db, m: Message, me_id: int):
     s = db.get(User, m.sender_id)
     r = db.get(User, m.receiver_id)
+    reply_txt = ""
+    if getattr(m, "reply_to", None):
+        src = db.get(Message, m.reply_to)
+        if src:
+            reply_txt = "mensagem apagada" if getattr(src, "deleted", False) else ((src.text or "") or ("foto" if src.media_url else ""))
+    deleted = bool(getattr(m, "deleted", False))
     return {
         "id": m.id,
-        "text": m.text or "",
-        "media_url": abs_url(m.media_url or ""),
+        "text": "mensagem apagada" if deleted else (m.text or ""),
+        "media_url": "" if deleted else abs_url(m.media_url or ""),
+        "deleted": deleted,
+        "reply_id": getattr(m, "reply_to", None),
+        "reply_text": reply_txt,
         "mine": m.sender_id == me_id,
         "from": public_nick(s) if s else "",
         "to": public_nick(r) if r else "",
@@ -87,11 +97,23 @@ def send(username: str, body: ChatIn, me: User = Depends(require_member), db: Se
         raise HTTPException(400, "Não manda mensagem pra você")
     if not body.text.strip():
         raise HTTPException(400, "Escreve algo")
-    m = Message(sender_id=me.id, receiver_id=other.id, text=body.text.strip())
+    m = Message(sender_id=me.id, receiver_id=other.id, text=body.text.strip(), reply_to=body.reply_id)
     db.add(m)
     db.add(Notification(user_id=other.id, actor_id=me.id, kind="chat", text=f"{public_nick(me)} mandou mensagem"))
     db.commit()
     db.refresh(m)
+    return _out(db, m, me.id)
+
+
+@router.delete("/msg/{msg_id}")
+def delete_msg(msg_id: int, me: User = Depends(require_member), db: Session = Depends(get_db)):
+    m = db.get(Message, msg_id)
+    if not m or m.sender_id != me.id:
+        raise HTTPException(404, "Mensagem não encontrada")
+    m.deleted = True
+    m.text = ""
+    m.media_url = ""
+    db.commit()
     return _out(db, m, me.id)
 
 

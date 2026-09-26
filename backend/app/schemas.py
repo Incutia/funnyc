@@ -87,6 +87,7 @@ class PostOut(BaseModel):
     collected: bool = False
     reposted: bool = False
     author_verified: bool = False
+    views_count: int = 0
     created_at: datetime
 
 

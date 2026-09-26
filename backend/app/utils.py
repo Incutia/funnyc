@@ -94,5 +94,6 @@ def post_out(db, post: Post, me_id: int | None = None) -> PostOut:
         collected=collected,
         reposted=reposted,
         author_verified=bool(author and (getattr(author, "is_verified", False) or is_owner(author))),
+        views_count=getattr(post, "views_count", 0) or 0,
         created_at=post.created_at,
     )

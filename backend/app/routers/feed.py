@@ -130,7 +130,7 @@ def collective_clock():
     left = max(0, int((next_at - datetime.utcnow()).total_seconds()))
     h, rem = divmod(left, 3600)
     m, s = divmod(rem, 60)
-    return {"seconds": left, "label": f"{h:02d}:{m:02d}:{s:02d}", "count": count}
+    return {"seconds": left, "label": f"{h:02d}:{m:02d}:{s:02d}", "count": count, "at": next_at.isoformat()}
 
 
 @router.get("/explore")
