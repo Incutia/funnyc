@@ -3,15 +3,17 @@ from pathlib import Path
 from time import time
 
 from fastapi import Depends, FastAPI
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.auth import require_owner
 from app.config import settings
-from app.database import Base, engine, migrate
-from app.models import User
-from app.routers import auth, comments, feed, posts, profile, users
+from app.database import Base, engine, get_db, migrate
+from app.models import Notification, User
+from app.routers import auth, chat, comments, feed, posts, profile, users
+from app.routers.users import find_user
 
 Base.metadata.create_all(bind=engine)
 migrate()
@@ -45,11 +47,33 @@ app.include_router(posts.router, prefix="/api/posts", tags=["posts"])
 app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
+app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "app": "funnyc", "v": "juice-4"}
+    return {"ok": True, "app": "funnyc", "v": "juice-5"}
+
+
+class BlastIn(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+    username: str = ""
+
+
+@app.post("/api/admin/aviso")
+def blast(body: BlastIn, me: User = Depends(require_owner), db=Depends(get_db)):
+    if body.username.strip():
+        u = find_user(db, body.username.strip())
+        if not u:
+            from fastapi import HTTPException
+            raise HTTPException(404, "Usuário não encontrado")
+        targets = [u]
+    else:
+        targets = db.query(User).filter(User.is_anonymous.is_(False)).all()
+    for u in targets:
+        db.add(Notification(user_id=u.id, actor_id=me.id, kind="admin", text=body.text.strip()))
+    db.commit()
+    return {"ok": True, "enviados": len(targets)}
 
 
 @app.get("/api/admin/pastas")

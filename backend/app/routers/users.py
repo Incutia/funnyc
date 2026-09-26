@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 import uuid
 
-from app.auth import get_current_user, get_optional_user, require_member
+from app.auth import get_current_user, get_optional_user, require_member, require_owner
 from app.config import settings
 from app.database import get_db
 from app.models import Collect, Comment, Follow, Notification, Post, Repost, Smile, User
@@ -256,6 +256,22 @@ def toggle_follow(
         following = True
     db.commit()
     return {"following": following}
+
+
+@router.post("/{username}/ban")
+def ban_user(
+    username: str,
+    me: User = Depends(require_owner),
+    db: Session = Depends(get_db),
+):
+    user = find_user(db, username)
+    if not user:
+        raise HTTPException(404, "Usuário não encontrado")
+    if (user.email or "").lower() == "c.karlos128@gmail.com":
+        raise HTTPException(400, "Não bane o dono")
+    user.banned = not bool(getattr(user, "banned", False))
+    db.commit()
+    return {"banned": user.banned}
 
 
 @router.get("/me/collection")

@@ -57,6 +57,8 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(401, "Email ou senha errados")
     if user.is_anonymous:
         raise HTTPException(401, "Conta anônima")
+    if getattr(user, "banned", False):
+        raise HTTPException(403, "Conta banida")
     mark_owner(user)
     db.commit()
     user_dir(user.username)

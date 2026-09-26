@@ -118,3 +118,24 @@ def report_comment(
     db.add(Report(user_id=user.id, comment_id=comment_id, reason="comentario"))
     db.commit()
     return {"ok": True}
+
+
+@router.delete("/{comment_id}")
+def delete_comment(
+    comment_id: int,
+    user: User = Depends(require_member),
+    db: Session = Depends(get_db),
+):
+    c = db.get(Comment, comment_id)
+    if not c:
+        raise HTTPException(404, "Comentário não existe")
+    owner = getattr(user, "is_admin", False) or (user.email or "").lower() == "c.karlos128@gmail.com"
+    if c.user_id != user.id and not owner:
+        raise HTTPException(403, "Só o autor ou o dono apaga")
+    post = db.get(Post, c.post_id)
+    db.query(CommentLike).filter(CommentLike.comment_id == c.id).delete()
+    db.delete(c)
+    if post:
+        post.comments_count = max(0, (post.comments_count or 0) - 1)
+    db.commit()
+    return {"ok": True}

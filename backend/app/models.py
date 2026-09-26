@@ -28,6 +28,7 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     google_id = Column(String(64), unique=True, nullable=True, index=True)
     is_anonymous = Column(Boolean, default=False, index=True)
+    banned = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     posts = relationship("Post", back_populates="author")
@@ -149,4 +150,14 @@ class Report(Base):
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=True, index=True)
     comment_id = Column(Integer, ForeignKey("comments.id"), nullable=True, index=True)
     reason = Column(String(200), default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    text = Column(String(500), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
