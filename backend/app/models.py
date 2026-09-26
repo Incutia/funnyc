@@ -46,6 +46,7 @@ class Post(Base):
     smiles_count = Column(Integer, default=0)
     comments_count = Column(Integer, default=0)
     reposts_count = Column(Integer, default=0)
+    views_count = Column(Integer, default=0)
     featured = Column(Boolean, default=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 

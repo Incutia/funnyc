@@ -3,13 +3,18 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config import settings
 
-if settings.DATABASE_URL.startswith("sqlite"):
-    raw = settings.DATABASE_URL.replace("sqlite:///", "", 1)
-    db_path = Path(raw)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+url = settings.DATABASE_URL
+if url.startswith("postgres://"):
+    url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif url.startswith("postgresql://") and "+psycopg2" not in url:
+    url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
-engine = create_engine(settings.DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
+if url.startswith("sqlite"):
+    raw = url.replace("sqlite:///", "", 1)
+    Path(raw).parent.mkdir(parents=True, exist_ok=True)
+
+connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
+engine = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -22,7 +27,7 @@ def migrate():
         "ALTER TABLE users ADD COLUMN display_name VARCHAR(32) DEFAULT ''",
         "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0",
         "ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0",
-        "ALTER TABLE posts ADD COLUMN reposts_count INTEGER DEFAULT 0",
+        "ALTER TABLE posts ADD COLUMN views_count INTEGER DEFAULT 0",
         "ALTER TABLE comments ADD COLUMN parent_id INTEGER",
         "ALTER TABLE comments ADD COLUMN likes_count INTEGER DEFAULT 0",
     ]

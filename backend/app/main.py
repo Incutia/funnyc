@@ -42,7 +42,7 @@ app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "app": "funnyc", "v": "setup-online-1"}
+    return {"ok": True, "app": "funnyc", "v": "redesign-2"}
 
 
 @app.get("/api/admin/pastas")

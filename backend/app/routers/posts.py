@@ -83,6 +83,16 @@ def get_post(
     return post_out(db, post, me.id if me else None)
 
 
+@router.post("/{post_id}/view")
+def add_view(post_id: int, db: Session = Depends(get_db)):
+    post = db.get(Post, post_id)
+    if not post:
+        raise HTTPException(404, "Meme não encontrado")
+    post.views_count = (getattr(post, "views_count", 0) or 0) + 1
+    db.commit()
+    return {"ok": True, "views": post.views_count}
+
+
 @router.post("/{post_id}/smile")
 def toggle_smile(
     post_id: int,

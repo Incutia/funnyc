@@ -5,7 +5,7 @@ from app.auth import get_optional_user, require_member
 from app.database import get_db
 from app.models import Comment, CommentLike, Notification, Post, Report, User
 from app.schemas import CommentCreate, CommentOut
-from app.utils import abs_url, public_nick
+from app.utils import abs_url, is_owner, public_nick
 from app.storage import log_texto
 
 router = APIRouter()
@@ -29,6 +29,7 @@ def _out(db, c: Comment, me_id: int | None, featured_id: int | None = None) -> C
         likes_count=c.likes_count or 0,
         liked=liked,
         featured=featured_id == c.id,
+        verified=bool(u and (getattr(u, "is_verified", False) or is_owner(u))),
         created_at=c.created_at,
     )
 
