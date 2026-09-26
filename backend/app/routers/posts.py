@@ -102,19 +102,31 @@ def download_post(post_id: int, db: Session = Depends(get_db)):
     try:
         from PIL import Image, ImageDraw, ImageFont
         img = Image.open(BytesIO(data)).convert("RGBA")
-        draw = ImageDraw.Draw(img)
-        mark = "funnyc"
-        font = ImageFont.load_default()
-        x = max(8, img.width - 90)
-        y = max(8, img.height - 28)
-        draw.rectangle((x - 6, y - 4, img.width - 6, img.height - 6), fill=(0, 0, 0, 140))
-        draw.text((x, y), mark, fill=(200, 245, 66, 255), font=font)
+        stamp = Image.new("RGBA", (520, 110), (0, 0, 0, 0))
+        d = ImageDraw.Draw(stamp)
+        d.rounded_rectangle((0, 0, 520, 110), radius=18, fill=(0, 0, 0, 200))
+        try:
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 64)
+        except Exception:
+            font = ImageFont.load_default()
+        d.text((28, 18), "funnyc", fill=(200, 245, 66, 255), font=font)
+        w = max(140, img.width // 4)
+        h = max(32, int(w * 110 / 520))
+        stamp = stamp.resize((w, h))
+        img.alpha_composite(stamp, (img.width - w - 18, img.height - h - 18))
         out = BytesIO()
-        img.convert("RGB").save(out, format="JPEG", quality=90)
+        img.convert("RGB").save(out, format="JPEG", quality=92)
         data = out.getvalue()
         return Response(content=data, media_type="image/jpeg", headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}.jpg"'})
     except Exception:
-        return Response(content=data, media_type="image/jpeg", headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}{path.suffix}"'})
+        from PIL import Image, ImageDraw
+        img = Image.open(BytesIO(data)).convert("RGB")
+        d = ImageDraw.Draw(img)
+        d.rectangle((img.width - 160, img.height - 40, img.width - 8, img.height - 8), fill=(0, 0, 0))
+        d.text((img.width - 148, img.height - 34), "funnyc", fill=(200, 245, 66))
+        out = BytesIO()
+        img.save(out, format="JPEG", quality=90)
+        return Response(content=out.getvalue(), media_type="image/jpeg", headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}.jpg"'})
 
 
 @router.post("/{post_id}/view")

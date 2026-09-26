@@ -8,7 +8,7 @@ from app.config import settings
 from app.database import get_db
 from app.models import Collect, Comment, Follow, Notification, Post, Repost, Smile, User
 from app.schemas import ProfileUpdate
-from app.utils import post_out, public_nick, user_out
+from app.utils import abs_url, post_out, public_nick, user_out
 from app.storage import save_into, write_conta
 
 router = APIRouter()
@@ -167,12 +167,14 @@ def my_replies(me: User = Depends(get_current_user), db: Session = Depends(get_d
     items = []
     for n in notes:
         actor = db.get(User, n.actor_id) if n.actor_id else None
+        post = db.get(Post, n.post_id) if n.post_id else None
         items.append(
             {
-                "kind": "notification",
+                "kind": n.kind or "notification",
                 "text": n.text,
                 "username": public_nick(actor) if actor else "",
                 "post_id": n.post_id,
+                "media_url": abs_url(post.media_url) if post else "",
                 "created_at": n.created_at.isoformat() if n.created_at else "",
             }
         )

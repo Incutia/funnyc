@@ -72,11 +72,12 @@ def list_comments(
     db: Session = Depends(get_db),
     me: User | None = Depends(get_optional_user),
 ):
-    if not db.get(Post, post_id):
+    post = db.get(Post, post_id)
+    if not post:
         raise HTTPException(404, "Meme não encontrado")
     rows = db.query(Comment).filter(Comment.post_id == post_id, Comment.parent_id.is_(None)).all()
     rows.sort(key=lambda c: (-(c.likes_count or 0), c.created_at))
-    top_id = rows[0].id if rows and (rows[0].likes_count or 0) > 0 else None
+    top_id = rows[0].id if post.featured and rows and (rows[0].likes_count or 0) > 0 else None
     return [_out(db, c, me.id if me else None, top_id) for c in rows]
 
 

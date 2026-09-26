@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from app.auth import get_optional_user
 from app.config import settings
 from app.database import get_db
-from app.models import Follow, Post, Repost, User
-from app.utils import post_out
+from app.models import Follow, Notification, Post, Repost, User
+from app.utils import post_out, public_nick, user_out
 
 router = APIRouter()
 SNAP = Path(settings.UPLOAD_DIR).resolve().parent / "collective.json"
@@ -73,6 +73,14 @@ def _refresh_collective(db: Session) -> list[int]:
     ids = [p.id for p in ranked]
     SNAP.parent.mkdir(parents=True, exist_ok=True)
     SNAP.write_text(json.dumps({"at": datetime.utcnow().isoformat(), "ids": ids}), encoding="utf-8")
+    if ids:
+        top = db.get(Post, ids[0])
+        author = db.get(User, top.user_id) if top else None
+        text = f"Novo destaque: meme de {public_nick(author) if author else 'funnyc'}"
+        people = db.query(User).filter(User.is_anonymous.is_(False)).all()
+        for u in people:
+            db.add(Notification(user_id=u.id, actor_id=top.user_id if top else None, post_id=ids[0], kind="destaque", text=text))
+        db.commit()
     return ids
 
 
@@ -146,3 +154,13 @@ def popular_tags(db: Session = Depends(get_db)):
                 counts[t] = counts.get(t, 0) + 1
     ranked = sorted(counts.items(), key=lambda x: -x[1])[:20]
     return [{"tag": t, "count": c} for t, c in ranked]
+
+
+@router.get("/people")
+def search_people(q: str = Query(""), db: Session = Depends(get_db)):
+    term = q.strip().lstrip("@").lower()
+    query = db.query(User).filter(User.is_anonymous.is_(False))
+    if term:
+        query = query.filter((User.username.ilike(f"%{term}%")) | (User.display_name.ilike(f"%{term}%")))
+    rows = query.order_by(User.created_at.desc()).limit(30).all()
+    return [user_out(db, u) for u in rows]
