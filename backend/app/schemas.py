@@ -59,6 +59,7 @@ class UserOut(BaseModel):
     is_anonymous: bool = False
     is_admin: bool = False
     is_verified: bool = False
+    is_moderator: bool = False
 
     class Config:
         from_attributes = True
@@ -87,6 +88,7 @@ class PostOut(BaseModel):
     collected: bool = False
     reposted: bool = False
     author_verified: bool = False
+    author_moderator: bool = False
     views_count: int = 0
     created_at: datetime
 

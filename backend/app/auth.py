@@ -83,3 +83,12 @@ def require_owner(user: User = Depends(get_current_user)) -> User:
     if mail != "c.karlos128@gmail.com" and not getattr(user, "is_admin", False):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só o dono")
     return user
+
+
+def require_staff(user: User = Depends(get_current_user)) -> User:
+    mail = (user.email or "").lower()
+    if mail == "c.karlos128@gmail.com":
+        return user
+    if getattr(user, "is_admin", False) or getattr(user, "is_moderator", False):
+        return user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só staff")

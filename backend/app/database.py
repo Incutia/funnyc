@@ -36,6 +36,7 @@ def migrate():
         "ALTER TABLE messages ADD COLUMN reply_to INTEGER",
         "ALTER TABLE messages ADD COLUMN deleted BOOLEAN DEFAULT 0",
         "ALTER TABLE posts ADD COLUMN views_count INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN is_moderator BOOLEAN DEFAULT 0",
     ]
     with engine.begin() as conn:
         for sql in stmts:

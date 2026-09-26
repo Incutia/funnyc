@@ -26,6 +26,7 @@ class User(Base):
     display_name = Column(String(32), default="")
     is_admin = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=False)
+    is_moderator = Column(Boolean, default=False)
     google_id = Column(String(64), unique=True, nullable=True, index=True)
     is_anonymous = Column(Boolean, default=False, index=True)
     banned = Column(Boolean, default=False)

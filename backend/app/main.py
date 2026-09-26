@@ -12,7 +12,7 @@ from app.auth import require_owner
 from app.config import settings
 from app.database import Base, engine, get_db, migrate
 from app.models import Notification, User
-from app.routers import auth, chat, comments, feed, posts, profile, users
+from app.routers import auth, chat, comments, feed, mod, posts, profile, users
 from app.routers.users import find_user
 
 Base.metadata.create_all(bind=engine)
@@ -48,11 +48,12 @@ app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+app.include_router(mod.router, prefix="/api/mod", tags=["mod"])
 
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "app": "funnyc", "v": "juice-22"}
+    return {"ok": True, "app": "funnyc", "v": "juice-23"}
 
 
 class BlastIn(BaseModel):

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 import uuid
 
-from app.auth import get_current_user, get_optional_user, require_member, require_owner
+from app.auth import get_current_user, get_optional_user, require_member, require_owner, require_staff
 from app.config import settings
 from app.database import get_db
 from app.models import Collect, Comment, Follow, Notification, Post, Repost, Smile, User
@@ -315,7 +315,7 @@ def list_following(username: str, db: Session = Depends(get_db)):
 @router.post("/{username}/ban")
 def ban_user(
     username: str,
-    me: User = Depends(require_owner),
+    me: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ):
     user = find_user(db, username)
@@ -340,6 +340,20 @@ def verify_user(
     user.is_verified = not bool(user.is_verified)
     db.commit()
     return {"verified": user.is_verified}
+
+
+@router.post("/{username}/mod")
+def toggle_mod(
+    username: str,
+    me: User = Depends(require_owner),
+    db: Session = Depends(get_db),
+):
+    user = find_user(db, username)
+    if not user:
+        raise HTTPException(404, "Usuário não encontrado")
+    user.is_moderator = not bool(getattr(user, "is_moderator", False))
+    db.commit()
+    return {"moderator": user.is_moderator}
 
 
 @router.get("/me/collection")
