@@ -8,7 +8,7 @@ import uuid
 from app.auth import get_current_user, get_optional_user, require_member
 from app.config import settings
 from app.database import get_db
-from app.models import Collect, Notification, Post, Report, Repost, Smile, User
+from app.models import Collect, Comment, CommentLike, Notification, Post, Report, Repost, Smile, User
 from app.utils import parse_tags, post_out, public_nick
 from app.storage import log_texto, save_into
 
@@ -101,32 +101,28 @@ def download_post(post_id: int, db: Session = Depends(get_db)):
         return Response(content=data, media_type=media, headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}{path.suffix}"'})
     try:
         from PIL import Image, ImageDraw, ImageFont
-        img = Image.open(BytesIO(data)).convert("RGBA")
-        stamp = Image.new("RGBA", (520, 110), (0, 0, 0, 0))
-        d = ImageDraw.Draw(stamp)
-        d.rounded_rectangle((0, 0, 520, 110), radius=18, fill=(0, 0, 0, 200))
+        img = Image.open(BytesIO(data)).convert("RGB")
+        bar = max(48, img.width // 14)
+        canvas = Image.new("RGB", (img.width, img.height + bar), (0, 0, 0))
+        canvas.paste(img, (0, 0))
+        d = ImageDraw.Draw(canvas)
         try:
-            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 64)
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", max(22, bar // 2))
         except Exception:
             font = ImageFont.load_default()
-        d.text((28, 18), "funnyc", fill=(200, 245, 66, 255), font=font)
-        w = max(140, img.width // 4)
-        h = max(32, int(w * 110 / 520))
-        stamp = stamp.resize((w, h))
-        img.alpha_composite(stamp, (img.width - w - 18, img.height - h - 18))
+        mark = "funnyc.com.br"
+        try:
+            bbox = d.textbbox((0, 0), mark, font=font)
+            tw = bbox[2] - bbox[0]
+            th = bbox[3] - bbox[1]
+        except Exception:
+            tw, th = 120, 14
+        d.text(((img.width - tw) // 2, img.height + (bar - th) // 2), mark, fill=(200, 245, 66), font=font)
         out = BytesIO()
-        img.convert("RGB").save(out, format="JPEG", quality=92)
-        data = out.getvalue()
-        return Response(content=data, media_type="image/jpeg", headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}.jpg"'})
-    except Exception:
-        from PIL import Image, ImageDraw
-        img = Image.open(BytesIO(data)).convert("RGB")
-        d = ImageDraw.Draw(img)
-        d.rectangle((img.width - 160, img.height - 40, img.width - 8, img.height - 8), fill=(0, 0, 0))
-        d.text((img.width - 148, img.height - 34), "funnyc", fill=(200, 245, 66))
-        out = BytesIO()
-        img.save(out, format="JPEG", quality=90)
+        canvas.save(out, format="JPEG", quality=92)
         return Response(content=out.getvalue(), media_type="image/jpeg", headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}.jpg"'})
+    except Exception as e:
+        raise HTTPException(500, f"Não deu pra marcar: {e}")
 
 
 @router.post("/{post_id}/view")
@@ -247,6 +243,14 @@ def delete_post(
     db.query(Smile).filter(Smile.post_id == post.id).delete()
     db.query(Collect).filter(Collect.post_id == post.id).delete()
     db.query(Repost).filter(Repost.post_id == post.id).delete()
+    db.query(Report).filter(Report.post_id == post.id).delete()
+    db.query(Notification).filter(Notification.post_id == post.id).delete()
+    comments = db.query(Comment).filter(Comment.post_id == post.id).all()
+    ids = [c.id for c in comments]
+    if ids:
+        db.query(CommentLike).filter(CommentLike.comment_id.in_(ids)).delete(synchronize_session=False)
+        db.query(Report).filter(Report.comment_id.in_(ids)).delete(synchronize_session=False)
+    db.query(Comment).filter(Comment.post_id == post.id).delete(synchronize_session=False)
     db.delete(post)
     db.commit()
     return {"ok": True}

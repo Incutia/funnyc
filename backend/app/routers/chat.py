@@ -51,9 +51,10 @@ def inbox(me: User = Depends(require_member), db: Session = Depends(get_db)):
         u = db.get(User, other)
         out.append(
             {
-                "username": public_nick(u) if u else "?",
-                "avatar_url": (u.avatar_url if u else "") or "",
-                "last": m.text,
+                "username": (u.username if u else "?"),
+                "name": public_nick(u) if u else "?",
+                "avatar_url": abs_url((u.avatar_url if u else "") or ""),
+                "last": (m.text or "").strip() or ("foto" if (m.media_url or "") else ""),
             }
         )
     return out

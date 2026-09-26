@@ -197,6 +197,7 @@ def delete_comment(
         db.query(CommentLike).filter(CommentLike.comment_id == k.id).delete()
         db.delete(k)
     db.query(CommentLike).filter(CommentLike.comment_id == c.id).delete()
+    db.query(Report).filter(Report.comment_id == c.id).delete()
     db.delete(c)
     if post:
         post.comments_count = max(0, (post.comments_count or 0) - 1)

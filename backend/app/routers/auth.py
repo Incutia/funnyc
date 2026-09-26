@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth import create_token, get_current_user, hash_password, verify_password
 from app.database import get_db
 from app.models import PasswordReset, User
-from app.schemas import ConfirmEmail, ForgotPassword, ResetPassword, TokenOut, UserCreate, UserLogin
+from app.schemas import ChangePassword, ConfirmEmail, ForgotPassword, ResetPassword, TokenOut, UserCreate, UserLogin
 from app.utils import mark_owner, user_out
 from app.storage import user_dir, write_conta
 from app.emailer import send_code
@@ -173,6 +173,18 @@ def confirm_again(body: ForgotPassword, db: Session = Depends(get_db)):
     if not sent:
         out["code"] = code
     return out
+
+
+@router.post("/password")
+def change_password(body: ChangePassword, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.is_anonymous or not user.password_hash:
+        raise HTTPException(400, "Conta anônima")
+    if not verify_password(body.old_password, user.password_hash):
+        raise HTTPException(400, "Senha atual errada")
+    user.password_hash = hash_password(body.new_password)
+    db.commit()
+    write_conta(user)
+    return {"ok": True}
 
 
 @router.get("/me")

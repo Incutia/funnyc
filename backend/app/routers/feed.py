@@ -112,17 +112,19 @@ def collective(
 @router.get("/collective/clock")
 def collective_clock():
     next_at = datetime.utcnow() + timedelta(hours=3)
+    count = 0
     if SNAP.exists():
         try:
             data = json.loads(SNAP.read_text(encoding="utf-8"))
             at = datetime.fromisoformat(data.get("at", "2000-01-01"))
             next_at = at + timedelta(hours=3)
+            count = len(list(data.get("ids") or []))
         except Exception:
             pass
     left = max(0, int((next_at - datetime.utcnow()).total_seconds()))
     h, rem = divmod(left, 3600)
     m, s = divmod(rem, 60)
-    return {"seconds": left, "label": f"{h:02d}:{m:02d}:{s:02d}"}
+    return {"seconds": left, "label": f"{h:02d}:{m:02d}:{s:02d}", "count": count}
 
 
 @router.get("/explore")

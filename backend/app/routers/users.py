@@ -15,11 +15,16 @@ router = APIRouter()
 
 
 def find_user(db: Session, key: str) -> User | None:
-    k = key.strip()
+    k = key.strip().lstrip("@")
+    if not k:
+        return None
     user = db.query(User).filter(User.username == k.lower()).first()
     if user:
         return user
-    return db.query(User).filter(User.display_name == k).first()
+    user = db.query(User).filter(User.display_name == k).first()
+    if user:
+        return user
+    return db.query(User).filter(User.display_name.ilike(k)).first()
 
 
 @router.patch("/me")
@@ -172,7 +177,8 @@ def my_replies(me: User = Depends(get_current_user), db: Session = Depends(get_d
             {
                 "kind": n.kind or "notification",
                 "text": n.text,
-                "username": public_nick(actor) if actor else "",
+                "username": (actor.username if actor else ""),
+                "name": public_nick(actor) if actor else "",
                 "post_id": n.post_id,
                 "media_url": abs_url(post.media_url) if post else "",
                 "created_at": n.created_at.isoformat() if n.created_at else "",
