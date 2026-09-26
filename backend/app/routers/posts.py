@@ -102,22 +102,22 @@ def download_post(post_id: int, db: Session = Depends(get_db)):
     try:
         from PIL import Image, ImageDraw, ImageFont
         img = Image.open(BytesIO(data)).convert("RGB")
-        bar = max(48, img.width // 14)
-        canvas = Image.new("RGB", (img.width, img.height + bar), (0, 0, 0))
+        bar = max(72, img.width // 8)
+        canvas = Image.new("RGB", (img.width, img.height + bar), (13, 17, 23))
         canvas.paste(img, (0, 0))
         d = ImageDraw.Draw(canvas)
         try:
-            font = ImageFont.truetype("DejaVuSans-Bold.ttf", max(22, bar // 2))
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", max(36, bar // 2))
         except Exception:
             font = ImageFont.load_default()
-        mark = "funnyc.com.br"
+        mark = "FUNNYC"
         try:
             bbox = d.textbbox((0, 0), mark, font=font)
             tw = bbox[2] - bbox[0]
             th = bbox[3] - bbox[1]
         except Exception:
-            tw, th = 120, 14
-        d.text(((img.width - tw) // 2, img.height + (bar - th) // 2), mark, fill=(200, 245, 66), font=font)
+            tw, th = 160, 28
+        d.text((img.width - tw - 28, img.height + (bar - th) // 2), mark, fill=(200, 245, 66), font=font)
         out = BytesIO()
         canvas.save(out, format="JPEG", quality=92)
         return Response(content=out.getvalue(), media_type="image/jpeg", headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}.jpg"'})

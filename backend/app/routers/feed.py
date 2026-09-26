@@ -19,6 +19,11 @@ def _dump(db, posts, me):
     return [post_out(db, p, me.id if me else None) for p in posts]
 
 
+def _not_official(db: Session):
+    bot = db.query(User).filter(User.username == "funnyc").first()
+    return bot.id if bot else None
+
+
 @router.get("/featured")
 def featured(
     skip: int = 0,
@@ -26,14 +31,11 @@ def featured(
     db: Session = Depends(get_db),
     me: User | None = Depends(get_optional_user),
 ):
-    posts = (
-        db.query(Post)
-        .filter(~Post.tags.ilike("%perfil%"))
-        .order_by(Post.created_at.desc())
-        .offset(skip)
-        .limit(min(limit, 50))
-        .all()
-    )
+    q = db.query(Post).filter(~Post.tags.ilike("%perfil%"))
+    oid = _not_official(db)
+    if oid:
+        q = q.filter(Post.user_id != oid)
+    posts = q.order_by(Post.created_at.desc()).offset(skip).limit(min(limit, 50)).all()
     return _dump(db, posts, me)
 
 
@@ -68,7 +70,11 @@ def _score(p: Post) -> int:
 
 
 def _refresh_collective(db: Session) -> list[int]:
-    posts = db.query(Post).filter(~Post.tags.ilike("%perfil%")).all()
+    posts = db.query(Post).filter(~Post.tags.ilike("%perfil%"))
+    oid = _not_official(db)
+    if oid:
+        posts = posts.filter(Post.user_id != oid)
+    posts = posts.all()
     ranked = sorted(posts, key=_score, reverse=True)[:30]
     ids = [p.id for p in ranked]
     SNAP.parent.mkdir(parents=True, exist_ok=True)

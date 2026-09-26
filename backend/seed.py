@@ -55,29 +55,7 @@ def run():
             bot.is_verified = True
             db.commit()
 
-        if db.query(Post).filter(Post.user_id == bot.id).count() == 0:
-            folder = Path(settings.UPLOAD_DIR) / "usuarios" / "funnyc" / "memes"
-            samples = [
-                ("bemvindo.png", 200, 240, 40, "bem-vindo ao funnyc", "oficial"),
-                ("coletivo.png", 40, 40, 40, "melhores memes", "coletivo"),
-                ("arrasta.png", 30, 80, 30, "arrasta pro lado", "tutorial"),
-            ]
-            for name, r, g, b, caption, tag in samples:
-                dest = folder / name
-                _png(dest, r, g, b)
-                db.add(
-                    Post(
-                        user_id=bot.id,
-                        kind="image",
-                        media_url=f"/media/usuarios/funnyc/memes/{name}",
-                        caption=caption,
-                        tags=tag,
-                        featured=True,
-                        smiles_count=3,
-                    )
-                )
-            db.commit()
-        print("Seed ok. Conta oficial Funnyc pronta.")
+        print("Seed ok. Sem conta oficial no feed.")
     finally:
         db.close()
 
