@@ -1,0 +1,9 @@
+Depois de copiar este backend pro GitHub:
+
+1. Railway → serviço funnyc
+2. Check for updates / Redeploy
+3. Espera Status = Online
+4. Testa no Chrome: https://funnyc-production.up.railway.app/api/health
+
+Sem esse Redeploy, nick, banner e foto de perfil NÃO gravam.
+Foto/banner NÃO viram post.

@@ -1,0 +1,33 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #app { height: 100%; background: #000; color: #f2f2f2; font-family: system-ui, sans-serif; overflow: hidden; }
+button { background: none; border: 0; color: inherit; font: inherit; }
+.screen { height: 100%; display: flex; flex-direction: column; }
+.stage { flex: 1; position: relative; overflow: hidden; touch-action: none; }
+.meme { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.meme img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(#0008, transparent 18%, transparent 62%, #000c); }
+.cap { position: absolute; left: 16px; right: 80px; bottom: 18px; }
+.cap h2 { font-size: 16px; font-weight: 650; }
+.tags { color: #c8f542; margin-top: 4px; }
+.hint { opacity: .4; font-size: 11px; margin-top: 8px; }
+.side { position: absolute; right: 12px; bottom: 28px; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.round { width: 44px; height: 44px; border-radius: 50%; background: #0008; display: grid; place-items: center; font-size: 22px; }
+.side span { font-size: 12px; font-weight: 700; }
+.bar { height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; padding-bottom: env(safe-area-inset-bottom); }
+.plus { width: 44px; height: 32px; background: #c8f542; color: #000; border-radius: 10px; font-size: 22px; line-height: 28px; }
+.av { width: 32px; height: 32px; border-radius: 50%; background: #161616; display: grid; place-items: center; font-weight: 800; }
+.login { padding: 48px 28px; }
+.login h1 { color: #c8f542; font-size: 42px; text-align: center; }
+.login p { text-align: center; opacity: .6; margin-bottom: 28px; }
+input, textarea { width: 100%; background: #161616; border: 1px solid #2a2a2a; color: #fff; border-radius: 12px; padding: 14px; margin: 8px 0; }
+.go { width: 100%; background: #c8f542; color: #000; font-weight: 800; padding: 14px; border-radius: 12px; margin-top: 12px; }
+.sheet { position: absolute; inset: 0; background: #111; z-index: 5; display: flex; flex-direction: column; }
+.sheet top, .sheet header { padding: 14px 16px; font-weight: 800; }
+.list { flex: 1; overflow: auto; padding: 8px 16px; }
+.row { padding: 12px 0; border-bottom: 1px solid #222; }
+.row b { color: #c8f542; font-size: 13px; display: block; }
+.composer { display: flex; gap: 8px; padding: 10px; }
+.menu { position: absolute; left: 0; right: 0; bottom: 0; background: #161616; border-radius: 18px 18px 0 0; z-index: 6; padding: 10px 8px 24px; }
+.menu button { width: 100%; text-align: left; padding: 14px 16px; }
+.err { color: #ff7b7b; margin-top: 8px; }
+.muted { opacity: .6; font-size: 13px; }
