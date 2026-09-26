@@ -44,7 +44,7 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
     if not username.replace("_", "").isalnum():
         raise HTTPException(400, "Username só pode ter letras, números e _")
     if db.query(User).filter(User.email == email).first():
-        raise HTTPException(400, "Email já cadastrado")
+        raise HTTPException(400, "Esse email já tem conta. Entra em já tenho conta. Se esqueceu a senha, pede o código.")
     if db.query(User).filter(User.username == username).first():
         username = f"{username}{secrets.token_hex(2)}"
     user = User(
@@ -61,13 +61,20 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
     write_conta(user)
     send_code(email, _issue_code(db, email), "confirm")
     return _token(db, user)
+
+
+@router.post("/login", response_model=TokenOut)
 def login(body: UserLogin, db: Session = Depends(get_db)):
-    key = body.email.strip().lower()
+    key = (body.email or body.username or "").strip().lower()
+    if not key:
+        raise HTTPException(400, "Email ou nick")
     user = db.query(User).filter(User.email == key).first()
     if not user:
         user = db.query(User).filter(User.username == key).first()
+    if not user:
+        user = db.query(User).filter(User.display_name.ilike(key)).first()
     if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
-        raise HTTPException(401, "Email ou senha errados")
+        raise HTTPException(401, "Email/nick ou senha errados. Se o email já existe, entra em já tenho conta ou esqueci a senha.")
     if user.is_anonymous:
         raise HTTPException(401, "Conta anônima")
     if getattr(user, "banned", False):
@@ -166,5 +173,8 @@ def confirm_again(body: ForgotPassword, db: Session = Depends(get_db)):
     if not sent:
         out["code"] = code
     return out
+
+
+@router.get("/me")
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return user_out(db, user)

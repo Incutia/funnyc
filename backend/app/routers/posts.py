@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from pathlib import Path
+from io import BytesIO
 import uuid
 
 from app.auth import get_current_user, get_optional_user, require_member
@@ -81,6 +83,38 @@ def get_post(
     if not post:
         raise HTTPException(404, "Meme não encontrado")
     return post_out(db, post, me.id if me else None)
+
+
+@router.get("/{post_id}/download")
+def download_post(post_id: int, db: Session = Depends(get_db)):
+    post = db.get(Post, post_id)
+    if not post:
+        raise HTTPException(404, "Meme não encontrado")
+    rel = (post.media_url or "").split("/media/")[-1]
+    path = Path(settings.UPLOAD_DIR) / rel
+    if not path.exists():
+        raise HTTPException(404, "Arquivo sumiu")
+    data = path.read_bytes()
+    name = path.name.lower()
+    if name.endswith((".mp4", ".webm")):
+        media = "video/mp4" if name.endswith(".mp4") else "video/webm"
+        return Response(content=data, media_type=media, headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}{path.suffix}"'})
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        img = Image.open(BytesIO(data)).convert("RGBA")
+        draw = ImageDraw.Draw(img)
+        mark = "funnyc"
+        font = ImageFont.load_default()
+        x = max(8, img.width - 90)
+        y = max(8, img.height - 28)
+        draw.rectangle((x - 6, y - 4, img.width - 6, img.height - 6), fill=(0, 0, 0, 140))
+        draw.text((x, y), mark, fill=(200, 245, 66, 255), font=font)
+        out = BytesIO()
+        img.convert("RGB").save(out, format="JPEG", quality=90)
+        data = out.getvalue()
+        return Response(content=data, media_type="image/jpeg", headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}.jpg"'})
+    except Exception:
+        return Response(content=data, media_type="image/jpeg", headers={"Content-Disposition": f'attachment; filename="funnyc-{post.id}{path.suffix}"'})
 
 
 @router.post("/{post_id}/view")
