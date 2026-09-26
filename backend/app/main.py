@@ -2,13 +2,15 @@
 from pathlib import Path
 from time import time
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.auth import require_owner
 from app.config import settings
 from app.database import Base, engine, migrate
+from app.models import User
 from app.routers import auth, comments, feed, posts, profile, users
 
 Base.metadata.create_all(bind=engine)
@@ -47,11 +49,11 @@ app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "app": "funnyc", "v": "juice-3"}
+    return {"ok": True, "app": "funnyc", "v": "juice-4"}
 
 
 @app.get("/api/admin/pastas")
-def list_user_folders():
+def list_user_folders(me: User = Depends(require_owner)):
     root = Path(settings.UPLOAD_DIR) / "usuarios"
     if not root.exists():
         return {"pastas": []}

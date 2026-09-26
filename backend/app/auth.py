@@ -71,6 +71,13 @@ def require_member(user: User = Depends(get_current_user)) -> User:
     if getattr(user, "is_anonymous", False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Conta anônima não pode curtir, salvar ou postar. Entre com Google.",
+            detail="Conta anônima não pode curtir, salvar ou postar.",
         )
+    return user
+
+
+def require_owner(user: User = Depends(get_current_user)) -> User:
+    mail = (user.email or "").lower()
+    if mail != "c.karlos128@gmail.com" and not getattr(user, "is_admin", False):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Só o dono")
     return user
