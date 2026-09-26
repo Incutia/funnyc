@@ -7,8 +7,38 @@ from app.models import Comment, CommentLike, Notification, Post, Report, User
 from app.schemas import CommentCreate, CommentOut
 from app.utils import abs_url, is_owner, public_nick
 from app.storage import log_texto
+import re
 
 router = APIRouter()
+
+
+def _mentions(db, text: str, actor: User, post_id: int):
+    names = re.findall(r"@([A-Za-z0-9_]{3,32})", text or "")
+    seen = set()
+    for raw in names:
+        key = raw.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        u = (
+            db.query(User)
+            .filter((User.username == key) | (User.display_name.ilike(raw)))
+            .first()
+        )
+        if u and u.id != actor.id:
+            db.add(
+                Notification(
+                    user_id=u.id,
+                    actor_id=actor.id,
+                    post_id=post_id,
+                    kind="mention",
+                    text=f"@{public_nick(actor)} marcou você",
+                )
+            )
+
+
+def _replies_count(db, cid: int) -> int:
+    return db.query(Comment).filter(Comment.parent_id == cid).count()
 
 
 def _out(db, c: Comment, me_id: int | None, featured_id: int | None = None) -> CommentOut:
@@ -30,6 +60,7 @@ def _out(db, c: Comment, me_id: int | None, featured_id: int | None = None) -> C
         liked=liked,
         featured=featured_id == c.id,
         verified=bool(u and (getattr(u, "is_verified", False) or is_owner(u))),
+        replies_count=_replies_count(db, c.id),
         created_at=c.created_at,
     )
 
@@ -42,7 +73,7 @@ def list_comments(
 ):
     if not db.get(Post, post_id):
         raise HTTPException(404, "Meme não encontrado")
-    rows = db.query(Comment).filter(Comment.post_id == post_id).all()
+    rows = db.query(Comment).filter(Comment.post_id == post_id, Comment.parent_id.is_(None)).all()
     rows.sort(key=lambda c: (-(c.likes_count or 0), c.created_at))
     top_id = rows[0].id if rows and (rows[0].likes_count or 0) > 0 else None
     return [_out(db, c, me.id if me else None, top_id) for c in rows]
@@ -77,12 +108,13 @@ def add_comment(
                 actor_id=user.id,
                 post_id=post.id,
                 kind="reply",
-                text=f"@{user.username} respondeu você",
+                text=f"@{public_nick(user)} respondeu você",
             )
         )
+    log_texto(user, f"{'resposta' if parent else 'comentario'} post={post.id}: {c.text}")
+    _mentions(db, c.text, user, post.id)
     db.commit()
     db.refresh(c)
-    log_texto(user, f"{'resposta' if parent else 'comentario'} post={post.id}: {c.text}")
     return _out(db, c, user.id)
 
 
@@ -120,6 +152,18 @@ def report_comment(
     return {"ok": True}
 
 
+@router.get("/thread/{comment_id}", response_model=list[CommentOut])
+def list_replies(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    me: User | None = Depends(get_optional_user),
+):
+    if not db.get(Comment, comment_id):
+        raise HTTPException(404, "Comentário não existe")
+    rows = db.query(Comment).filter(Comment.parent_id == comment_id).order_by(Comment.created_at.asc()).all()
+    return [_out(db, c, me.id if me else None) for c in rows]
+
+
 @router.delete("/{comment_id}")
 def delete_comment(
     comment_id: int,
@@ -133,6 +177,10 @@ def delete_comment(
     if c.user_id != user.id and not owner:
         raise HTTPException(403, "Só o autor ou o dono apaga")
     post = db.get(Post, c.post_id)
+    kids = db.query(Comment).filter(Comment.parent_id == c.id).all()
+    for k in kids:
+        db.query(CommentLike).filter(CommentLike.comment_id == k.id).delete()
+        db.delete(k)
     db.query(CommentLike).filter(CommentLike.comment_id == c.id).delete()
     db.delete(c)
     if post:

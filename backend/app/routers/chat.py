@@ -1,23 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.auth import require_member, require_owner
+from app.auth import require_member
 from app.database import get_db
 from app.models import Message, Notification, User
 from app.routers.users import find_user
-from app.utils import public_nick
+from app.storage import save_into
+from app.utils import abs_url, public_nick
+from pathlib import Path
+import uuid
 
 router = APIRouter()
 
 
 class ChatIn(BaseModel):
-    text: str = Field(min_length=1, max_length=500)
-
-
-class BlastIn(BaseModel):
-    text: str = Field(min_length=1, max_length=300)
-    username: str = ""
+    text: str = Field(default="", max_length=500)
 
 
 def _out(db, m: Message, me_id: int):
@@ -25,7 +23,8 @@ def _out(db, m: Message, me_id: int):
     r = db.get(User, m.receiver_id)
     return {
         "id": m.id,
-        "text": m.text,
+        "text": m.text or "",
+        "media_url": abs_url(m.media_url or ""),
         "mine": m.sender_id == me_id,
         "from": public_nick(s) if s else "",
         "to": public_nick(r) if r else "",
@@ -85,9 +84,37 @@ def send(username: str, body: ChatIn, me: User = Depends(require_member), db: Se
         raise HTTPException(404, "Usuário não encontrado")
     if other.id == me.id:
         raise HTTPException(400, "Não manda mensagem pra você")
+    if not body.text.strip():
+        raise HTTPException(400, "Escreve algo")
     m = Message(sender_id=me.id, receiver_id=other.id, text=body.text.strip())
     db.add(m)
     db.add(Notification(user_id=other.id, actor_id=me.id, kind="chat", text=f"{public_nick(me)} mandou mensagem"))
+    db.commit()
+    db.refresh(m)
+    return _out(db, m, me.id)
+
+
+@router.post("/{username}/foto")
+def send_photo(
+    username: str,
+    file: UploadFile = File(...),
+    me: User = Depends(require_member),
+    db: Session = Depends(get_db),
+):
+    other = find_user(db, username)
+    if not other:
+        raise HTTPException(404, "Usuário não encontrado")
+    suffix = Path(file.filename or "chat.jpg").suffix.lower()
+    if suffix not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
+        raise HTTPException(400, "Só foto")
+    data = file.file.read()
+    if len(data) > 15 * 1024 * 1024:
+        raise HTTPException(400, "Foto máx 15MB")
+    name = f"{uuid.uuid4().hex}{suffix}"
+    url = save_into(me, "memes", name, data)
+    m = Message(sender_id=me.id, receiver_id=other.id, text="", media_url=url)
+    db.add(m)
+    db.add(Notification(user_id=other.id, actor_id=me.id, kind="chat", text=f"{public_nick(me)} mandou foto"))
     db.commit()
     db.refresh(m)
     return _out(db, m, me.id)

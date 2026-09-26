@@ -159,5 +159,6 @@ class Message(Base):
     id = Column(Integer, primary_key=True)
     sender_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    text = Column(String(500), nullable=False)
+    text = Column(String(500), default="")
+    media_url = Column(String(400), default="")
     created_at = Column(DateTime, default=datetime.utcnow)

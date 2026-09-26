@@ -52,7 +52,7 @@ app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "app": "funnyc", "v": "juice-5"}
+    return {"ok": True, "app": "funnyc", "v": "juice-7"}
 
 
 class BlastIn(BaseModel):

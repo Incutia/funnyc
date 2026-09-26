@@ -90,6 +90,7 @@ class CommentOut(BaseModel):
     liked: bool = False
     featured: bool = False
     verified: bool = False
+    replies_count: int = 0
     created_at: datetime
 
 

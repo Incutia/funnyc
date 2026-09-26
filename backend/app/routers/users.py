@@ -8,7 +8,7 @@ from app.config import settings
 from app.database import get_db
 from app.models import Collect, Comment, Follow, Notification, Post, Repost, Smile, User
 from app.schemas import ProfileUpdate
-from app.utils import post_out, user_out
+from app.utils import post_out, public_nick, user_out
 from app.storage import save_into, write_conta
 
 router = APIRouter()
@@ -154,7 +154,7 @@ def my_replies(me: User = Depends(get_current_user), db: Session = Depends(get_d
             {
                 "kind": "notification",
                 "text": n.text,
-                "username": actor.username if actor else "",
+                "username": public_nick(actor) if actor else "",
                 "post_id": n.post_id,
                 "created_at": n.created_at.isoformat() if n.created_at else "",
             }
@@ -272,6 +272,20 @@ def ban_user(
     user.banned = not bool(getattr(user, "banned", False))
     db.commit()
     return {"banned": user.banned}
+
+
+@router.post("/{username}/verify")
+def verify_user(
+    username: str,
+    me: User = Depends(require_owner),
+    db: Session = Depends(get_db),
+):
+    user = find_user(db, username)
+    if not user:
+        raise HTTPException(404, "Usuário não encontrado")
+    user.is_verified = not bool(user.is_verified)
+    db.commit()
+    return {"verified": user.is_verified}
 
 
 @router.get("/me/collection")
