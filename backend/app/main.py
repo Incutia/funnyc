@@ -13,6 +13,11 @@ from app.routers import auth, comments, feed, posts, profile, users
 
 Base.metadata.create_all(bind=engine)
 migrate()
+try:
+    from seed import run as seed_run
+    seed_run()
+except Exception:
+    pass
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 STARTED = int(time())
@@ -42,7 +47,7 @@ app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "app": "funnyc", "v": "redesign-2"}
+    return {"ok": True, "app": "funnyc", "v": "juice-3"}
 
 
 @app.get("/api/admin/pastas")
