@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_optional_user, require_member
 from app.database import get_db
-from app.models import Comment, CommentLike, Notification, Post, Report, User
+from app.models import Comment, CommentLike, Notification, Post, Report, Repost, User
 from app.schemas import CommentCreate, CommentOut
 from app.utils import abs_url, is_owner, public_nick
 from app.storage import log_texto
@@ -55,6 +55,7 @@ def _out(db, c: Comment, me_id: int | None, featured_id: int | None = None) -> C
         username=public_nick(u) if u else "deleted",
         avatar_url=abs_url(u.avatar_url or "") if u else "",
         text=c.text,
+        media_url=abs_url(c.media_url or ""),
         parent_id=c.parent_id,
         likes_count=c.likes_count or 0,
         liked=liked,
@@ -92,11 +93,24 @@ def add_comment(
     parent = None
     if body.parent_id:
         parent = db.get(Comment, body.parent_id)
+    media = ""
+    if body.media_post_id:
+        src = db.get(Post, body.media_post_id)
+        if not src or src.kind == "video":
+            raise HTTPException(400, "Só meme de imagem")
+        own = src.user_id == user.id
+        rt = db.query(Repost).filter(Repost.user_id == user.id, Repost.post_id == src.id).first()
+        if not own and not rt:
+            raise HTTPException(403, "Só meme que você postou ou deu RT")
+        media = src.media_url
+    if not body.text.strip() and not media:
+        raise HTTPException(400, "Escreve ou escolhe um meme")
     c = Comment(
         user_id=user.id,
         post_id=post.id,
         parent_id=parent.id if parent else None,
         text=body.text.strip(),
+        media_url=media,
     )
     db.add(c)
     post.comments_count += 1

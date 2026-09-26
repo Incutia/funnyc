@@ -131,6 +131,23 @@ def my_reposts(me: User = Depends(get_current_user), db: Session = Depends(get_d
     return _posts_from(db, rows, me.id)
 
 
+@router.get("/me/memes")
+def my_memes(me: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    own = db.query(Post).filter(Post.user_id == me.id, Post.kind == "image").order_by(Post.created_at.desc()).all()
+    rts = db.query(Repost).filter(Repost.user_id == me.id).order_by(Repost.created_at.desc()).all()
+    seen = set()
+    out = []
+    for p in own:
+        seen.add(p.id)
+        out.append(post_out(db, p, me.id))
+    for r in rts:
+        p = db.get(Post, r.post_id)
+        if p and p.id not in seen and p.kind == "image":
+            seen.add(p.id)
+            out.append(post_out(db, p, me.id))
+    return out
+
+
 @router.get("/me/replies")
 def my_replies(me: User = Depends(get_current_user), db: Session = Depends(get_db)):
     notes = (

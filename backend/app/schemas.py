@@ -75,8 +75,9 @@ class PostOut(BaseModel):
 
 
 class CommentCreate(BaseModel):
-    text: str = Field(min_length=1, max_length=500)
+    text: str = Field(default="", max_length=500)
     parent_id: Optional[int] = None
+    media_post_id: Optional[int] = None
 
 
 class CommentOut(BaseModel):
@@ -85,6 +86,7 @@ class CommentOut(BaseModel):
     username: str
     avatar_url: str = ""
     text: str
+    media_url: str = ""
     parent_id: Optional[int] = None
     likes_count: int = 0
     liked: bool = False

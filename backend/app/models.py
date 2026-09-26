@@ -83,6 +83,7 @@ class Comment(Base):
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=False, index=True)
     parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
     text = Column(Text, nullable=False)
+    media_url = Column(String(400), default="")
     likes_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
